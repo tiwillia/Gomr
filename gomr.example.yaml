@@ -1,0 +1,10 @@
+hostname: "irc.example.com"
+port: "6667"
+channel: "#test"
+nick: "gomr"
+db:
+        host: "localhost"
+        port: "3306"
+        username: "user1"
+        password: "password123"
+        name: "gomr"
