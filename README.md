@@ -1,4 +1,4 @@
-#Homr 2.0
+#Gomr
 -----------
 ###Instructions
 1) Modify the configuration yaml file:
@@ -9,7 +9,7 @@ vim gomr.yaml
 ```
 2) Build the docker image:
 ```
-docker build /go/src/github.com/tiwillia/gomr
+docker build $GOPATH/src/github.com/tiwillia/gomr
 ```
 
 3) Run it
