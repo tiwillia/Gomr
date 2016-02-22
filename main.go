@@ -49,8 +49,10 @@ func main() {
 	for {
 		line, err := stream.ReadString('\n')
 		if err != nil {
-			log.Println("Oh shit, an error occured: ")
-			log.Println(err)
+			if err.Error() == "EOF" {
+				continue
+			}
+			log.Println("Oh shit, an error occured:", err)
 			return
 		}
 		parseLine(line, conn)
@@ -86,45 +88,48 @@ func parseLine(line string, conn *Connection) {
 	log.Printf(line)
 
 	// If a PING is received from the server, respond to avoid being disconnected
-	if Match(line, "PING :"+config.Hostname+"$") {
+	if Match(line, "^PING :"+config.Hostname) {
 		respondToPing(line, conn)
-	} else {
-		var user, channel, msg string
-		var urgx, crgx, mrgx *regexp.Regexp
+		return
+	}
 
-		// Example lines from server:
-		// 2016/02/22 13:37:58 :tim!~tim@dhcp137-210.rdu.redhat.com PRIVMSG #test11123 :This is a test string
-		// 2016/02/22 13:38:11 :tim!~tim@dhcp137-210.rdu.redhat.com NICK :timbo
-		// 2016/02/22 13:38:13 :timbo!~tim@dhcp137-210.rdu.redhat.com PRIVMSG #test11123 :this is another test string
-		urgx = regexp.MustCompile(`:(\S+)!~`)
-		umatch := urgx.FindStringSubmatch(line)
-		if umatch != nil && len(umatch) > 1 {
-			user = umatch[1]
-			log.Println("user:", user)
+	// In this block, we use regex to determin the user who sent the message,
+	//   the channel the message was sent on, and the message itself.
+	// Example lines from server:
+	// 2016/02/22 13:37:58 :tim!~tim@example.com PRIVMSG #test11123 :This is a test string
+	// 2016/02/22 13:38:11 :tim!~tim@example.com NICK :timbo
+	// 2016/02/22 13:38:13 :timbo!~tim@example.com PRIVMSG #test11123 :this is another test string
+	var user, channel, msg string
+	var urgx, crgx, mrgx *regexp.Regexp
+
+	urgx = regexp.MustCompile(`:(\S+)!~`)
+	umatch := urgx.FindStringSubmatch(line)
+	if umatch != nil && len(umatch) > 1 {
+		user = umatch[1]
+		log.Println("user:", user)
+	}
+
+	crgx = regexp.MustCompile(`\sPRIVMSG\s(\S+)\s`)
+	cmatch := crgx.FindStringSubmatch(line)
+	if cmatch != nil && len(cmatch) > 1 {
+		channel = cmatch[1]
+		if channel == config.Nick {
+			// This must be done to allow PRIVMSG's to users
+			channel = user
 		}
+		log.Println("channel:", channel)
+	}
 
-		crgx = regexp.MustCompile(`\sPRIVMSG\s(\S+)\s`)
-		cmatch := crgx.FindStringSubmatch(line)
-		if cmatch != nil && len(cmatch) > 1 {
-			channel = cmatch[1]
-			if channel == config.Nick {
-				// This must be done to allow PRIVMSG's to users
-				channel = user
-			}
-			log.Println("channel:", channel)
-		}
+	mrgx = regexp.MustCompile(`\sPRIVMSG\s\S+\s:(.*)`)
+	mmatch := mrgx.FindStringSubmatch(line)
+	if mmatch != nil && len(mmatch) > 1 {
+		msg = mmatch[1]
+		log.Println("message:", msg)
+	}
 
-		mrgx = regexp.MustCompile(`\sPRIVMSG\s\S+\s:(.*)`)
-		mmatch := mrgx.FindStringSubmatch(line)
-		if mmatch != nil && len(mmatch) > 1 {
-			msg = mmatch[1]
-			log.Println("message:", msg)
-		}
-
-		if msg != "" {
-			for _, plugin := range pluginList {
-				plugin.Parse(user, channel, msg, conn)
-			}
+	if msg != "" {
+		for _, plugin := range pluginList {
+			plugin.Parse(user, channel, msg, conn)
 		}
 	}
 }
