@@ -19,7 +19,7 @@ func (kp KarmaPlugin) Register() (err error) {
 	return nil
 }
 
-func (kp KarmaPlugin) Parse(input string, conn *Connection) (err error) {
+func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (err error) {
 	if !Match(input, "[0-9a-zA-Z._-]+(\\+|-){2,}") {
 		return nil
 	}

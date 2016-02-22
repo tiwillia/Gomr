@@ -3,12 +3,13 @@ package main
 import (
 	"bufio"
 	"log"
+	"regexp"
 )
 
 // All plugins should implement this interface
 type Plugin interface {
 	Register() error
-	Parse(string, *Connection) error
+	Parse(string, string, string, *Connection) error // Parse(user, channel, msg, connection)
 	Help() string
 }
 
@@ -92,10 +93,37 @@ func parseLine(line string, conn *Connection) {
 	if Match(line, "PING :"+config.Hostname+"$") {
 		respondToPing(line, conn)
 	} else {
-		message := MatchAndPull(line, "PRIVMSG", `PRIVMSG `+config.Channel+` :(.+)\n`)
-		if message != "" {
+		var user, channel, msg string
+		var urgx, crgx, mrgx *regexp.Regexp
+
+		// Example lines from server:
+		// 2016/02/22 13:37:58 :tim!~tim@dhcp137-210.rdu.redhat.com PRIVMSG #test11123 :This is a test string
+		// 2016/02/22 13:38:11 :tim!~tim@dhcp137-210.rdu.redhat.com NICK :timbo
+		// 2016/02/22 13:38:13 :timbo!~tim@dhcp137-210.rdu.redhat.com PRIVMSG #test11123 :this is another test string
+		urgx = regexp.MustCompile(`:(\S+)!~`)
+		umatch := urgx.FindStringSubmatch(line)
+		if umatch != nil && len(umatch) > 1 {
+			user = umatch[1]
+			log.Println("user:", user)
+		}
+
+		crgx = regexp.MustCompile(`\sPRIVMSG\s(\S+)\s`)
+		cmatch := crgx.FindStringSubmatch(line)
+		if cmatch != nil && len(cmatch) > 1 {
+			channel = cmatch[1]
+			log.Println("channel:", channel)
+		}
+
+		mrgx = regexp.MustCompile(`\sPRIVMSG\s\S+\s:(.*)`)
+		mmatch := mrgx.FindStringSubmatch(line)
+		if mmatch != nil && len(mmatch) > 1 {
+			msg = mmatch[1]
+			log.Println("message:", msg)
+		}
+
+		if msg != "" {
 			for _, plugin := range pluginList {
-				plugin.Parse(line, conn)
+				plugin.Parse(user, channel, msg, conn)
 			}
 		}
 	}

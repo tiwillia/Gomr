@@ -36,8 +36,9 @@ func (c *Connection) Send(text string) {
 	c.Conn.Write([]byte(text + "\n"))
 }
 
-func (c *Connection) SendTo(text, nick string) {
-	c.Conn.Write([]byte("PRIVMSG " + nick + " :" + text + "\n"))
+// Identity can either be a channel or a nick
+func (c *Connection) SendTo(identity, text string) {
+	c.Conn.Write([]byte("PRIVMSG " + identity + " :" + text + "\n"))
 }
 
 // Send the configured channel a message

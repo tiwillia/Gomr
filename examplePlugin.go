@@ -15,9 +15,9 @@ func (e ExamplePlugin) Register() (err error) {
 // Parse() is the main function of a plugin. A string from the irc channel
 //   will be provided as an argument, for the plugin to parse as it wishes.
 // This should return a string that the bot should return.
-func (e ExamplePlugin) Parse(input string, conn *Connection) (err error) {
+func (e ExamplePlugin) Parse(user, channel, input string, conn *Connection) (err error) {
 	if Match(input, "hello?") {
-		conn.SendChan("Hello " + config.Hostname + "!")
+		conn.SendTo(channel, "Hello "+user+"!")
 	}
 	return nil
 }
