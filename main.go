@@ -14,7 +14,6 @@ type Plugin interface {
 }
 
 var (
-	database   Database
 	config     Config
 	pluginList []Plugin
 )
@@ -28,14 +27,11 @@ func main() {
 	config = GetConfiguration(configPath)
 
 	log.Println("Getting database connection...")
-	database, err := InitDB(config.Db.Hostname, config.Db.Port,
+	err := InitDB(config.Db.Hostname, config.Db.Port,
 		config.Db.Username, config.Db.Password, config.Db.Name)
 	if err != nil {
 		log.Panicln("ERROR: Unable to connect to to database:", err)
 	}
-
-	// TODO remove this, only here so the damn thing builds
-	log.Println("remove me", database)
 
 	// Register all plugins
 	log.Println("Registering plugins...")
@@ -111,6 +107,10 @@ func parseLine(line string, conn *Connection) {
 		cmatch := crgx.FindStringSubmatch(line)
 		if cmatch != nil && len(cmatch) > 1 {
 			channel = cmatch[1]
+			if channel == config.Nick {
+				// This must be done to allow PRIVMSG's to users
+				channel = user
+			}
 			log.Println("channel:", channel)
 		}
 

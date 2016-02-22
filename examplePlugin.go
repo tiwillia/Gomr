@@ -23,5 +23,5 @@ func (e ExamplePlugin) Parse(user, channel, input string, conn *Connection) (err
 }
 
 func (e ExamplePlugin) Help() (helpText string) {
-	return "TODO"
+	return "Example help text!"
 }
