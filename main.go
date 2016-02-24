@@ -10,7 +10,7 @@ import (
 type Plugin interface {
 	Register() error
 	Parse(string, string, string, *Connection) error // Parse(user, channel, msg, connection)
-	Help() string
+	Help() []string
 }
 
 var (
@@ -23,8 +23,7 @@ func main() {
 	log.Println("Starting irc bot...")
 
 	// Read configuration
-	configPath := "./gomr.yaml"
-	config = GetConfiguration(configPath)
+	config = GetConfiguration()
 
 	log.Println("Getting database connection...")
 	err := InitDB(config.Db.Hostname, config.Db.Port,
@@ -128,6 +127,22 @@ func parseLine(line string, conn *Connection) {
 	}
 
 	if msg != "" {
+		// Check if the help command was sent
+		if Match(msg, config.Nick+`[:,.]*\shelp`) {
+			var helpText []string
+			for _, plugin := range pluginList {
+				texts := plugin.Help()
+				helpText = append(helpText, texts...)
+			}
+			for _, text := range helpText {
+				// For now, always send help text to the user in a private message
+				//  It is likely the help text will get too big for a channel.
+				conn.SendTo(user, text)
+			}
+			conn.SendTo(channel, user+", help information sent via private message")
+			return
+		}
+
 		for _, plugin := range pluginList {
 			plugin.Parse(user, channel, msg, conn)
 		}

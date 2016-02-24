@@ -64,8 +64,9 @@ func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (er
 	return nil
 }
 
-func (kp KarmaPlugin) Help() (helpText string) {
-	return "<name>++ or <name>--"
+func (kp KarmaPlugin) Help() (texts []string) {
+	texts = append(texts, "<name>++ or <name>--")
+	return texts
 }
 
 func FindOrCreateKarma(u string) (k Karma, err error) {
