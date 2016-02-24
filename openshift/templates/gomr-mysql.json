@@ -109,7 +109,22 @@
                 "image": "gomr",
                 "ports": [],
                 "env": [
-                  TODO TODO TODO ASDFJAJSFA
+                  {
+                    "name": "DATABASE_SERVICE_NAME",
+                    "value": "${DATABASE_SERVICE_NAME}"
+                  },
+                  {
+                    "name": "MYSQL_USER",
+                    "value": "${DATABASE_USER}"
+                  },
+                  {
+                    "name": "MYSQL_PASSWORD",
+                    "value": "${DATABASE_PASSWORD}"
+                  },
+                  {
+                    "name": "MYSQL_DATABASE",
+                    "value": "${DATABASE_NAME}"
+                  }
                 ]
               }
             ]
@@ -237,7 +252,7 @@
     {
       "name": "DATABASE_SERVICE_NAME",
       "description": "Database service name",
-      "value": "database"
+      "value": "gomr-database"
     },
     {
       "name": "DATABASE_USER",
