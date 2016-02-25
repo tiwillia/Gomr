@@ -2,7 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"log"
+	"errors"
 	"strconv"
 )
 
@@ -50,14 +50,12 @@ func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (er
 		var k Karma
 		k, err = FindOrCreateKarma(user)
 		if err != nil {
-			log.Println("ERROR: Unable to find or create karma entry:", err)
-			return
+			return errors.New("Unable to find or create karma entry:", err.Error())
 		}
 		k.Points = k.Points + change
 		err = k.Update()
 		if err != nil {
-			log.Println("ERROR: Unable to update karma entry:", err)
-			return
+			return errors.New("Unable to update karma entry:", err.Error())
 		}
 		conn.SendTo(channel, user+" now has "+strconv.Itoa(k.Points)+" karma.")
 	}
@@ -76,11 +74,8 @@ func FindOrCreateKarma(u string) (k Karma, err error) {
 			k.Points = 0
 			err = Db.Insert(&k)
 			if err != nil {
-				log.Println("ERROR: Unable to create new karma entry in db:", err)
 				return
 			}
-		} else {
-			log.Println("ERROR: Unable to select karma entry from db:", err)
 		}
 	}
 	return
