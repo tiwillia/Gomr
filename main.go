@@ -93,7 +93,7 @@ func parseLine(line string, conn *Connection) {
 	log.Printf(line)
 
 	// If a PING is received from the server, respond to avoid being disconnected
-	if Match(line, "^PING :"+config.Hostname) {
+	if Match(line, "^PING :") {
 		respondToPing(line, conn)
 		return
 	}
@@ -160,7 +160,16 @@ func parseLine(line string, conn *Connection) {
 }
 
 // Respond to pings from the irc server to keep the server alive
-func respondToPing(ping string, conn *Connection) {
-	conn.Send("PONG " + config.Hostname)
-	log.Println("PONG " + config.Hostname)
+func respondToPing(line string, conn *Connection) {
+	hrgx := regexp.MustCompile(`^PING :(\S+)`)
+	hmatch := hrgx.FindStringSubmatch(line)
+	var pongHost string
+	if hmatch != nil && len(hmatch) > 1 {
+		pongHost = hmatch[1]
+	} else {
+		panic("Could not find host to ping in received ping string: " + line)
+	}
+
+	conn.Send("PONG " + pongHost)
+	log.Println("PONG " + pongHost)
 }
