@@ -9,3 +9,7 @@ db:
         username: "user1"       #MYSQL_USER
         password: "password123" #MYSQL_PASSWORD
         name: "gomr"            #MYSQL_DATABASE
+source: "https://github.com/tiwillia/gomr"
+
+# Dictionary Plugin
+wordnikapikey: ""

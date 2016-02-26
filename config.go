@@ -20,6 +20,10 @@ type Config struct {
 		Password string `yaml:"password"`
 		Name     string `yaml:"name"`
 	}
+	Source string `yaml:"source"`
+
+	// Dictionary Plugin
+	WordnikApiKey string `yaml:"wordnikapikey"`
 }
 
 var (

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"log"
+	"reflect"
 	"regexp"
 )
 
@@ -63,20 +64,25 @@ func main() {
 
 // All plugins should be registered here.
 func registerPlugins() {
+	var plugins []Plugin
+
 	exPlugin := ExamplePlugin{}
-	err := exPlugin.Register()
-	if err != nil {
-		log.Println("Unable to register example plugin, skipping plugin.")
-	} else {
-		pluginList = append(pluginList, exPlugin)
-	}
+	plugins = append(plugins, exPlugin)
 
 	karmaPlugin := KarmaPlugin{}
-	err = karmaPlugin.Register()
-	if err != nil {
-		log.Println("Unable to register karma plugin, skipping plugin.")
-	} else {
-		pluginList = append(pluginList, karmaPlugin)
+	plugins = append(plugins, karmaPlugin)
+
+	dictPlugin := DictionaryPlugin{}
+	plugins = append(plugins, dictPlugin)
+
+	var err error
+	for _, p := range plugins {
+		err = p.Register()
+		if err != nil {
+			log.Println("ERROR: Unable to register and enable plugin", reflect.TypeOf(p), ":", err)
+		} else {
+			pluginList = append(pluginList, p)
+		}
 	}
 }
 
@@ -139,12 +145,16 @@ func parseLine(line string, conn *Connection) {
 				//  It is likely the help text will get too big for a channel.
 				conn.SendTo(user, text)
 			}
+			conn.SendTo(user, "Want to contribute? Source: "+config.Source)
 			conn.SendTo(channel, user+", help information sent via private message")
 			return
 		}
 
-		for _, plugin := range pluginList {
-			plugin.Parse(user, channel, msg, conn)
+		for _, p := range pluginList {
+			err := p.Parse(user, channel, msg, conn)
+			if err != nil {
+				log.Println("ERROR in plugin", reflect.TypeOf(p), ":", err)
+			}
 		}
 	}
 }
