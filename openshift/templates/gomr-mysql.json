@@ -17,7 +17,7 @@
       "kind": "ImageStream",
       "apiVersion": "v1",
       "metadata": {
-        "name": "gomr",
+        "name": "gomr-openshift",
         "annotations": {
           "description": "Keeps track of changes in the application image"
         }
@@ -47,7 +47,7 @@
         "output": {
           "to": {
             "kind": "ImageStreamTag",
-            "name": "gomr:latest"
+            "name": "gomr-openshift:latest"
           }
         },
         "triggers": [
@@ -83,7 +83,7 @@
               ],
               "from": {
                 "kind": "ImageStreamTag",
-                "name": "gomr:latest"
+                "name": "gomr-openshift:latest"
               }
             }
           },
@@ -106,7 +106,7 @@
             "containers": [
               {
                 "name": "gomr",
-                "image": "gomr",
+                "image": "gomr-openshift",
                 "ports": [],
                 "env": [
                   {
