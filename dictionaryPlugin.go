@@ -45,8 +45,12 @@ func (e DictionaryPlugin) Parse(user, channel, input string, conn *Connection) (
 			}
 			resp := []DefineResp{}
 			json.Unmarshal(r, &resp)
+			if len(resp) == 0 {
+				conn.SendTo(channel, "No definition found for "+word+".")
+				return
+			}
 			definition := resp[0].Text
-			conn.SendTo(channel, word+":"+definition)
+			conn.SendTo(channel, word+": "+definition)
 		} else {
 			err = errors.New("Dictionary Plugin Error: unable to get word definition string from input:" + input)
 			return
