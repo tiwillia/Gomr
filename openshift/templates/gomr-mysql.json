@@ -42,7 +42,14 @@
           "contextDir": "${CONTEXT_DIR}"
         },
         "strategy": {
-          "type": "Docker"
+          "type": "Source",
+          "sourceStrategy": {
+            "from": {
+              "kind": "DockerImage",
+              "name": "docker.io/tiwillia/go-15-sti:latest"
+            },
+            "forcePull": true
+          }
         },
         "output": {
           "to": {
