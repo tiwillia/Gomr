@@ -52,4 +52,5 @@ func defineTables(Dbm *gorp.DbMap) {
 	// Column sizes and options are defined on the database table structs,
 	//   there is no reason to set it here.
 	_ = Dbm.AddTableWithName(Karma{}, "karma").SetKeys(true, "Id")
+	_ = Dbm.AddTableWithName(Factoid{}, "factoids").SetKeys(true, "Id")
 }

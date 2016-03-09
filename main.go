@@ -72,6 +72,9 @@ func registerPlugins() {
 	karmaPlugin := KarmaPlugin{}
 	plugins = append(plugins, karmaPlugin)
 
+	factoidPlugin := FactoidPlugin{}
+	plugins = append(plugins, factoidPlugin)
+
 	dictPlugin := DictionaryPlugin{}
 	plugins = append(plugins, dictPlugin)
 
