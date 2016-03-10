@@ -149,7 +149,9 @@ func parseLine(line string, conn *Connection) {
 				conn.SendTo(user, text)
 			}
 			conn.SendTo(user, "Want to contribute? Source: "+config.Source)
-			conn.SendTo(channel, user+", help information sent via private message")
+			if channel != user {
+				conn.SendTo(channel, user+", help information sent via private message")
+			}
 			return
 		}
 
