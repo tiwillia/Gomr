@@ -25,11 +25,11 @@ func (fp FactoidPlugin) Register() (err error) {
 
 func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (err error) {
 	// Check for factoid retrieval match
-	if Match(input, `^\S+\?\r$`) || Match(input, `^`+config.Nick+`:*\s+\S+\?\r$`) {
+	if Match(input, `^\S+\?\r$`) || Match(input, `(?i)^`+config.Nick+`:*\s+\S+\?\r$`) {
 		log.Println("Matched!")
 		var frgxStr string
-		if Match(input, `^`+config.Nick) {
-			frgxStr = `^` + config.Nick + `[:]\s+(\S+)\?\r$`
+		if Match(input, `(?i)^`+config.Nick) {
+			frgxStr = `(?i)^` + config.Nick + `[:]\s+(\S+)\?\r$`
 		} else {
 			frgxStr = `^(\S+)\?\r$`
 		}
@@ -63,7 +63,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 	}
 
 	// Check for factoid set match
-	setrgxStr := `^` + config.Nick + `[:]\s+(\S+) is\s+(\S+.*)\r$`
+	setrgxStr := `(?i)^` + config.Nick + `[:]\s+(\S+) is\s+(\S+.*)\r$`
 	if Match(input, setrgxStr) {
 		srgx := regexp.MustCompile(setrgxStr)
 		smatch := srgx.FindStringSubmatch(input)

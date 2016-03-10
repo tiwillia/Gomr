@@ -137,7 +137,7 @@ func parseLine(line string, conn *Connection) {
 
 	if msg != "" {
 		// Check if the help command was sent
-		if Match(msg, config.Nick+`[:,.]*\shelp`) {
+		if Match(msg, `(?i)`+config.Nick+`[:,.]*\shelp`) {
 			var helpText []string
 			for _, plugin := range pluginList {
 				texts := plugin.Help()

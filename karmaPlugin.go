@@ -24,8 +24,8 @@ func (kp KarmaPlugin) Register() (err error) {
 }
 
 func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (err error) {
-	if Match(input, config.Nick+`[\S]?\s+rank`) {
-		if Match(input, config.Nick+`[\S]?\s+rank\s+[\S]+`) {
+	if Match(input, `(?i)`+config.Nick+`[\S]?\s+rank`) {
+		if Match(input, `(?i)`+config.Nick+`[\S]?\s+rank\s+[\S]+`) {
 			urgx, _ := regexp.Compile(`\s+rank\s+([\S]+)`)
 			umatch := urgx.FindStringSubmatch(input)
 			if umatch != nil && len(umatch) > 1 {

@@ -27,7 +27,7 @@ func (e DictionaryPlugin) Register() (err error) {
 }
 
 func (e DictionaryPlugin) Parse(user, channel, input string, conn *Connection) (err error) {
-	if Match(input, config.Nick+`[\S]* define[:]*\s+[\S]{2,}`) {
+	if Match(input, `(?i)`+config.Nick+`[\S]* define[:]*\s+[\S]{2,}`) {
 		wrgx, _ := regexp.Compile(`define[:]*\s+([\S]{2,})`)
 		wordMatch := wrgx.FindStringSubmatch(input)
 

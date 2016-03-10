@@ -23,7 +23,8 @@ func (e ExamplePlugin) Register() (err error) {
 func (e ExamplePlugin) Parse(user, channel, input string, conn *Connection) (err error) {
 
 	// Check out the utils.go file for ease-of-use functions like Match()
-	if Match(input, "^hello?") {
+	// For golang-specific regex help, see: https://github.com/google/re2/wiki/Syntax
+	if Match(input, "(?i)^hello?") {
 		conn.SendTo(channel, "Hello "+user+"!")
 	}
 
