@@ -63,7 +63,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 	}
 
 	// Check for factoid set match
-	setrgxStr := `(?i)^` + config.Nick + `[:]\s+(\S+) is\s+(\S+.*)\r$`
+	setrgxStr := `(?i)^` + config.Nick + `:*\s+(\S+) is\s+(\S+.*)\r$`
 	if Match(input, setrgxStr) {
 		srgx := regexp.MustCompile(setrgxStr)
 		smatch := srgx.FindStringSubmatch(input)
@@ -90,7 +90,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 	}
 
 	// Check for factoid forget match
-	frgxStr := `(?i)^` + config.Nick + `[:]\s+forget\s+(\S+)\s*([0-9]*)\r$`
+	frgxStr := `(?i)^` + config.Nick + `:*\s+forget\s+(\S+)\s*([0-9]*)\r$`
 	if Match(input, frgxStr) {
 		frgx := regexp.MustCompile(frgxStr)
 		fmatch := frgx.FindStringSubmatch(input)
