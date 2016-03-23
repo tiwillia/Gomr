@@ -24,7 +24,7 @@ func (e ExamplePlugin) Parse(user, channel, input string, conn *Connection) (err
 
 	// Check out the utils.go file for ease-of-use functions like Match()
 	// For golang-specific regex help, see: https://github.com/google/re2/wiki/Syntax
-	if Match(input, "(?i)^hello?") {
+	if Match(input, "(?i)^hello\\?") {
 		conn.SendTo(channel, "Hello "+user+"!")
 	}
 
