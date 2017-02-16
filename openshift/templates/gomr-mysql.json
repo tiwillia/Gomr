@@ -24,6 +24,16 @@
       }
     },
     {
+      "kind": "Secret",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "gomr-config"
+      },
+      "stringData": {
+        "config.yaml": "${GOMR_CONFIG_YAML}"
+      }
+    },
+    {
       "kind": "BuildConfig",
       "apiVersion": "v1",
       "metadata": {
@@ -38,18 +48,10 @@
           "git": {
             "uri": "${SOURCE_REPOSITORY_URL}",
             "ref": "${SOURCE_REPOSITORY_REF}"
-          },
-          "contextDir": "${CONTEXT_DIR}"
+          }
         },
         "strategy": {
-          "type": "Source",
-          "sourceStrategy": {
-            "from": {
-              "kind": "DockerImage",
-              "name": "docker.io/tiwillia/go-15-sti:latest"
-            },
-            "forcePull": true
-          }
+          "type": "Docker"
         },
         "output": {
           "to": {
@@ -132,7 +134,22 @@
                     "name": "MYSQL_DATABASE",
                     "value": "${DATABASE_NAME}"
                   }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "gomr-config-volume",
+                    "mountPath": "${GOMR_CONFIG_MOUNT_DIR}",
+                    "readOnly": true
+                  }
                 ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "gomr-config-volume",
+                "secret": {
+                  "secretName": "gomr-config"
+                }
               }
             ]
           }
@@ -178,14 +195,14 @@
           {
             "type": "ImageChange",
             "imageChangeParams": {
-              "automatic": false,
+              "automatic": true,
               "containerNames": [
                 "mysql"
               ],
               "from": {
                 "kind": "ImageStreamTag",
                 "namespace": "openshift",
-                "name": "mysql:5.6"
+                "name": "mysql:5.7"
               }
             }
           },
@@ -208,7 +225,7 @@
             "containers": [
               {
                 "name": "mysql",
-                "image": "mysql",
+                "image": " ",
                 "ports": [
                   {
                     "containerPort": 3306
@@ -224,10 +241,26 @@
                     "value": "${DATABASE_PASSWORD}"
                   },
                   {
+                    "name": "MYSQL_RANDOM_ROOT_PASSWORD",
+                    "value": "yes"
+                  },
+                  {
                     "name": "MYSQL_DATABASE",
                     "value": "${DATABASE_NAME}"
                   }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "data",
+                    "mountPath": "/var/lib/mysql/data"
+                  }
                 ]
+              }
+            ],
+            "volumes": [
+              {
+                "name": "data",
+                "emptyDir": {}
               }
             ]
           }
@@ -236,10 +269,6 @@
     }
   ],
   "parameters": [
-    {
-      "name": "CONTEXT_DIR",
-      "description": "Set this to the relative path to your project if it is not in the root of your repository"
-    },  
     {
       "name": "SOURCE_REPOSITORY_URL",
       "description": "The URL of the repository with your application source code",
@@ -255,6 +284,16 @@
       "description": "A secret string used to configure the GitHub webhook",
       "generate": "expression",
       "from": "[a-zA-Z0-9]{40}"
+    },
+    {
+      "name": "GOMR_CONFIG_YAML",
+      "description": "Gomr Config YAML",
+      "required": true
+    },
+    {
+      "name": "GOMR_CONFIG_MOUNT_DIR",
+      "description": "Gomr config volume mount directory",
+      "value": "/gomr-config"
     },
     {
       "name": "DATABASE_SERVICE_NAME",

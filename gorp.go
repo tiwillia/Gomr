@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/go-gorp/gorp"
 	_ "github.com/go-sql-driver/mysql"
-	"log"
+	"github.com/golang/glog"
 )
 
 var (
@@ -40,7 +40,7 @@ func InitDB(host, port, user, password, dbname string) (err error) {
 
 	defineTables(Db)
 	if err := Db.CreateTablesIfNotExists(); err != nil {
-		log.Panicln("Unable to create tables:", err)
+		glog.Fatalln("Unable to create tables:", err)
 	}
 
 	ErrNoRowsUpdated = errors.New("No rows updated")

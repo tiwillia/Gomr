@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/golang/glog"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
@@ -26,20 +27,16 @@ type Config struct {
 	WordnikApiKey string `yaml:"wordnikapikey"`
 }
 
-var (
-	configFilePath = "./gomr.yaml"
-)
-
 // Set configuration variables from configuration file and environment
-func GetConfiguration() (c Config) {
+func GetConfiguration(path string) (c Config) {
 	// Bail if the configuration file isn't found
 	//  Some configuration must be set via configuration file
-	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
-		panic("Configuration file " + configFilePath + " not found.")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		glog.Fatalf("Configuration file %s not found.", path)
 	}
 
 	// Get inital configuration from yaml file
-	c = getFileConfiguration()
+	c = getFileConfiguration(path)
 
 	// Set database configuration via env variables if they exist
 	//  Environment variables take precedence over file configuration
@@ -63,14 +60,14 @@ func GetConfiguration() (c Config) {
 }
 
 // Get configuration from yaml file
-func getFileConfiguration() (c Config) {
-	confile, err := ioutil.ReadFile(configFilePath)
+func getFileConfiguration(path string) (c Config) {
+	confile, err := ioutil.ReadFile(path)
 	if err != nil {
-		panic("Failed to read configuration: " + err.Error())
+		glog.Fatalf("Failed to read configuration: %s", err.Error())
 	}
 	err = yaml.Unmarshal([]byte(confile), &c)
 	if err != nil {
-		panic("Failed to read configuration: " + err.Error())
+		glog.Fatalf("Failed to read configuration: %s", err.Error())
 	}
 
 	return c

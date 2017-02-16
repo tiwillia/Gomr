@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
+	"github.com/golang/glog"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -42,7 +42,7 @@ func HttpGet(url string) (response []byte, err error) {
 func MatchAndPull(line, regex, pull string) (substr string) {
 	matchRegex, err := regexp.Compile(regex)
 	if err != nil {
-		log.Println("Unable to parse regex:", regex)
+		glog.Infoln("Unable to parse regex:", regex)
 		return ""
 	}
 
@@ -62,7 +62,7 @@ func MatchAndPull(line, regex, pull string) (substr string) {
 func Match(line, regex string) bool {
 	matchRegex, err := regexp.Compile(regex)
 	if err != nil {
-		log.Println("Unable to parse regex:", regex)
+		glog.Infoln("Unable to parse regex:", regex)
 		return false
 	}
 

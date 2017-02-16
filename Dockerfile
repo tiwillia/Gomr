@@ -1,4 +1,4 @@
-FROM golang:1.5
+FROM golang:1.8
 
 MAINTAINER Timothy S. Williams <tiwillia@redhat.com>
 
@@ -10,4 +10,4 @@ WORKDIR /go/src/github.com/tiwillia/gomr
 COPY . /go/src/github.com/tiwillia/gomr
 RUN go-wrapper download && go-wrapper install
 
-CMD ["go-wrapper", "run"]
+CMD ["go-wrapper", "run", "--config=/gomr-config/config.yaml", "-logtostderr"]

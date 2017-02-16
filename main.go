@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
-	"log"
+	"flag"
 	"reflect"
 	"regexp"
+
+	"github.com/golang/glog"
 )
 
 // All plugins should implement this interface
@@ -21,27 +23,29 @@ var (
 
 // This is where we start heh
 func main() {
-	log.Println("Starting irc bot...")
+	configPath := flag.String("config", "./gomr.yaml", "Path to config file")
+	flag.Parse()
+	glog.Infoln("Starting irc bot...")
 
 	// Read configuration
-	config = GetConfiguration()
+	config = GetConfiguration(*configPath)
 
-	log.Println("Getting database connection...")
+	glog.Infoln("Getting database connection...")
 	err := InitDB(config.Db.Hostname, config.Db.Port,
 		config.Db.Username, config.Db.Password, config.Db.Name)
 	if err != nil {
-		log.Panicln("ERROR: Unable to connect to to database:", err)
+		glog.Fatalln("ERROR: Unable to connect to to database:", err)
 	}
 
 	// Register all plugins
-	log.Println("Registering plugins...")
+	glog.Infoln("Registering plugins...")
 	registerPlugins()
 
 	// create a connection to the irc server and join channel
 	var conn *Connection
 	conn, err = NewConnection(config.Hostname, config.Port, config.Channel, config.Nick)
 	if err != nil {
-		log.Panicln("Unable to connect to", config.Hostname, ":", config.Port, err)
+		glog.Fatalln("Unable to connect to", config.Hostname, ":", config.Port, err)
 	}
 
 	// Loop through the connection stream for the rest of forseeable time
@@ -52,7 +56,7 @@ func main() {
 			if err.Error() == "EOF" {
 				continue
 			}
-			log.Println("Oh shit, an error occured:", err)
+			glog.Infoln("Oh shit, an error occured:", err)
 			return
 		}
 		parseLine(line, conn)
@@ -82,7 +86,7 @@ func registerPlugins() {
 	for _, p := range plugins {
 		err = p.Register()
 		if err != nil {
-			log.Println("ERROR: Unable to register and enable plugin", reflect.TypeOf(p), ":", err)
+			glog.Infoln("ERROR: Unable to register and enable plugin", reflect.TypeOf(p), ":", err)
 		} else {
 			pluginList = append(pluginList, p)
 		}
@@ -93,7 +97,7 @@ func registerPlugins() {
 // Loops through each plugin in pluginList and runs the Parse() method from each
 //   on the provided line
 func parseLine(line string, conn *Connection) {
-	log.Printf(line)
+	glog.Infoln(line)
 
 	// If a PING is received from the server, respond to avoid being disconnected
 	if Match(line, "^PING :") {
@@ -114,7 +118,7 @@ func parseLine(line string, conn *Connection) {
 	umatch := urgx.FindStringSubmatch(line)
 	if umatch != nil && len(umatch) > 1 {
 		user = umatch[1]
-		log.Println("user:", user)
+		glog.Infoln("user:", user)
 	}
 
 	crgx = regexp.MustCompile(`\sPRIVMSG\s(\S+)\s`)
@@ -125,14 +129,14 @@ func parseLine(line string, conn *Connection) {
 			// This must be done to allow PRIVMSG's to users
 			channel = user
 		}
-		log.Println("channel:", channel)
+		glog.Infoln("channel:", channel)
 	}
 
 	mrgx = regexp.MustCompile(`\sPRIVMSG\s\S+\s:(.*)`)
 	mmatch := mrgx.FindStringSubmatch(line)
 	if mmatch != nil && len(mmatch) > 1 {
 		msg = mmatch[1]
-		log.Println("message:", msg)
+		glog.Infoln("message:", msg)
 	}
 
 	if msg != "" {
@@ -158,7 +162,7 @@ func parseLine(line string, conn *Connection) {
 		for _, p := range pluginList {
 			err := p.Parse(user, channel, msg, conn)
 			if err != nil {
-				log.Println("ERROR in plugin", reflect.TypeOf(p), ":", err)
+				glog.Infoln("ERROR in plugin", reflect.TypeOf(p), ":", err)
 			}
 		}
 	}
@@ -172,9 +176,9 @@ func respondToPing(line string, conn *Connection) {
 	if hmatch != nil && len(hmatch) > 1 {
 		pongHost = hmatch[1]
 	} else {
-		panic("Could not find host to ping in received ping string: " + line)
+		glog.Fatalln("Could not find host to ping in received ping string: ", line)
 	}
 
 	conn.Send("PONG " + pongHost)
-	log.Println("PONG " + pongHost)
+	glog.Infoln("PONG " + pongHost)
 }
