@@ -1,24 +1,15 @@
-package main
+package gomr
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"github.com/go-gorp/gorp"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/glog"
 )
 
-var (
-	Db *gorp.DbMap
-)
-
-var (
-	ErrNoRowsUpdated error
-)
-
 // Create and return a Database object
-func InitDB(host, port, user, password, dbname string) (err error) {
+func InitDB(host, port, user, password, dbname string) (db *gorp.DbMap, err error) {
 	connectionString := fmt.Sprintf("%s:%s@%s([%s]:%s)/%s",
 		user, password, "tcp", host, port, dbname)
 
@@ -36,16 +27,14 @@ func InitDB(host, port, user, password, dbname string) (err error) {
 	}
 
 	// Set up gorp mappings
-	Db = &gorp.DbMap{Db: dbCon, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
+	db = &gorp.DbMap{Db: dbCon, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
 
-	defineTables(Db)
-	if err := Db.CreateTablesIfNotExists(); err != nil {
+	defineTables(db)
+	if err := db.CreateTablesIfNotExists(); err != nil {
 		glog.Fatalln("Unable to create tables:", err)
 	}
 
-	ErrNoRowsUpdated = errors.New("No rows updated")
-
-	return err
+	return db, err
 }
 
 func defineTables(Dbm *gorp.DbMap) {

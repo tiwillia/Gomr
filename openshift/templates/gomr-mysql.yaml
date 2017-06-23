@@ -1,0 +1,209 @@
+kind: Template
+apiVersion: "v1"
+metadata: 
+  name: "gomr-mysql"
+  annotations: 
+    description: "An irc bot, written in go, using a mysql database"
+    tags: "instant-app,irc"
+    iconClass: "icon-golang"
+labels: 
+  template: "gomr-mysql"
+objects: 
+  - kind: ImageStream
+    apiVersion: "v1"
+    metadata: 
+      name: "gomr-openshift"
+      annotations: 
+        description: "Keeps track of changes in the application image"
+  - kind: Secret
+    apiVersion: "v1"
+    metadata: 
+      name: "gomr-config"
+    stringData: 
+      config.yaml: "${GOMR_CONFIG_YAML}"
+  - kind: BuildConfig
+    apiVersion: "v1"
+    metadata: 
+      name: "gomr"
+      annotations: 
+        description: "Gomr build config."
+    spec: 
+      source: 
+        type: "Git"
+        git: 
+          uri: "${SOURCE_REPOSITORY_URL}"
+          ref: "${SOURCE_REPOSITORY_REF}"
+      strategy: 
+        type: "Docker"
+      output: 
+        to: 
+          kind: ImageStreamTag
+          name: "gomr-openshift:latest"
+      triggers: 
+        - type: "ConfigChange"
+        - type: "GitHub"
+          github: 
+            secret: "${GITHUB_WEBHOOK_SECRET}"
+  - kind: DeploymentConfig
+    apiVersion: "v1"
+    metadata: 
+      name: "gomr"
+    spec: 
+      strategy: 
+        type: "Recreate"
+      triggers: 
+        - type: "ImageChange"
+          imageChangeParams: 
+            automatic: true
+            containerNames: 
+              - "gomr"
+            from: 
+              kind: ImageStreamTag
+              name: "gomr-openshift:latest"
+        - type: "ConfigChange"
+      replicas: 1
+      selector: 
+        name: "gomr"
+      template: 
+        metadata: 
+          name: "gomr"
+          labels: 
+            name: "gomr"
+        spec: 
+          containers: 
+            - name: "gomr"
+              image: "gomr-openshift"
+              ports: []
+              env: 
+                - name: "DATABASE_SERVICE_NAME"
+                  value: "${DATABASE_SERVICE_NAME}"
+                - name: "MYSQL_USER"
+                  value: "${DATABASE_USER}"
+                - name: "MYSQL_PASSWORD"
+                  value: "${DATABASE_PASSWORD}"
+                - name: "MYSQL_DATABASE"
+                  value: "${DATABASE_NAME}"
+              volumeMounts: 
+                - name: "gomr-config-volume"
+                  mountPath: "${GOMR_CONFIG_MOUNT_DIR}"
+                  readOnly: true
+          volumes: 
+            - name: "gomr-config-volume"
+              secret: 
+                secretName: "gomr-config"
+  - kind: Service
+    apiVersion: "v1"
+    metadata: 
+      name: "${DATABASE_SERVICE_NAME}"
+      annotations: 
+        description: "Exposes the database server"
+    spec: 
+      ports: 
+        - name: "mysql"
+          port: 3306
+          targetPort: 3306
+      selector: 
+        name: "${DATABASE_SERVICE_NAME}"
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: "gomr-pv"
+    spec:
+      accessModes:
+        - "ReadWriteOnce"
+      resources:
+        requests:
+          storage: "${VOLUME_CAPACITY}"
+  - kind: DeploymentConfig
+    apiVersion: "v1"
+    metadata: 
+      name: "${DATABASE_SERVICE_NAME}"
+      annotations: 
+        description: "Defines how to deploy the database"
+    spec: 
+      strategy: 
+        type: "Recreate"
+      triggers: 
+        - type: "ImageChange"
+          imageChangeParams: 
+            automatic: true
+            containerNames: 
+              - "mysql"
+            from: 
+              kind: ImageStreamTag
+              namespace: "openshift"
+              name: "mysql:5.7"
+        - type: "ConfigChange"
+      replicas: 1
+      selector: 
+        name: "${DATABASE_SERVICE_NAME}"
+      template: 
+        metadata: 
+          name: "${DATABASE_SERVICE_NAME}"
+          labels: 
+            name: "${DATABASE_SERVICE_NAME}"
+        spec: 
+          containers: 
+            - name: "mysql"
+              image: " "
+              ports: 
+                - containerPort: 3306
+              env: 
+                - name: "MYSQL_USER"
+                  value: "${DATABASE_USER}"
+                - name: "MYSQL_PASSWORD"
+                  value: "${DATABASE_PASSWORD}"
+                - name: "MYSQL_RANDOM_ROOT_PASSWORD"
+                  value: "yes"
+                - name: "MYSQL_DATABASE"
+                  value: "${DATABASE_NAME}"
+              volumeMounts: 
+                - name: "data"
+                  mountPath: "/var/lib/mysql/data"
+          volumes: 
+            - name: "data"
+              persistentVolumeClaim:
+                claimName: "gomr-pv"
+parameters: 
+  - name: SOURCE_REPOSITORY_URL
+    description: "The URL of the repository with your application source code"
+    value: "https://github.com/tiwillia/gomr.git"
+
+  - name: SOURCE_REPOSITORY_REF
+    description: "Set this to a branch name, tag or other ref of your repository if you are not using the default branch"
+    value: "master"
+
+  - name: GITHUB_WEBHOOK_SECRET
+    description: "A secret string used to configure the GitHub webhook"
+    generate: "expression"
+    from: "[a-zA-Z0-9]{40}"
+
+  - name: GOMR_CONFIG_YAML
+    description: "Gomr Config YAML"
+    required: true
+
+  - name: GOMR_CONFIG_MOUNT_DIR
+    description: "Gomr config volume mount directory"
+    value: "/gomr-config"
+
+  - name: DATABASE_SERVICE_NAME
+    description: "Database service name"
+    value: "gomr-database"
+
+  - name: DATABASE_USER
+    description: "database username"
+    generate: "expression"
+    from: "user[A-Z0-9]{3}"
+
+  - name: DATABASE_PASSWORD
+    description: "database password"
+    generate: "expression"
+    from: "[a-zA-Z0-9]{8}"
+
+  - name: DATABASE_NAME
+    description: "database name"
+    value: "gomrdb"
+
+  - name: VOLUME_CAPACITY
+    description: "Size of the database volume"
+    value: "1Gi"

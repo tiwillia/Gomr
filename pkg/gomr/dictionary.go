@@ -1,4 +1,4 @@
-package main
+package gomr
 
 import (
 	"encoding/json"
@@ -10,6 +10,8 @@ import (
 //  Get an api key here: http://developer.wordnik.com/
 
 type DictionaryPlugin struct {
+	Nick          string
+	WordnikAPIKey string
 }
 
 // Struct for json response from api when getting a word definition list
@@ -18,16 +20,16 @@ type DefineResp struct {
 	Text         string `json:"text"`
 }
 
-func (e DictionaryPlugin) Register() (err error) {
+func (dp DictionaryPlugin) Register() (err error) {
 	// If the wordnik api key was not supplied, this plugin is useless
-	if config.WordnikApiKey == "" {
+	if dp.WordnikAPIKey == "" {
 		return errors.New("Wordnik API key was not provided in configuration")
 	}
 	return nil
 }
 
-func (e DictionaryPlugin) Parse(user, channel, input string, conn *Connection) (err error) {
-	if Match(input, `(?i)`+config.Nick+`[\S]* define[:]*\s+[\S]{2,}`) {
+func (dp DictionaryPlugin) Parse(user, channel, input string, conn *Connection) (err error) {
+	if Match(input, `(?i)`+dp.Nick+`[\S]* define[:]*\s+[\S]{2,}`) {
 		wrgx, _ := regexp.Compile(`define[:]*\s+([\S]{2,})`)
 		wordMatch := wrgx.FindStringSubmatch(input)
 
@@ -35,7 +37,7 @@ func (e DictionaryPlugin) Parse(user, channel, input string, conn *Connection) (
 			word := wordMatch[1]
 			url := "http://api.wordnik.com:80/v4/word.json/" + word +
 				"/definitions?limit=1&includeRelated=false&useCanonical=true&includeTags=false&api_key=" +
-				config.WordnikApiKey
+				dp.WordnikAPIKey
 
 			var r []byte
 			r, err = HttpGet(url)
@@ -52,7 +54,7 @@ func (e DictionaryPlugin) Parse(user, channel, input string, conn *Connection) (
 			definition := resp[0].Text
 			conn.SendTo(channel, word+": "+definition)
 		} else {
-			err = errors.New("Dictionary Plugin Error: unable to get word definition string from input:" + input)
+			err = errors.New("Dictionary Error: unable to get word definition string from input:" + input)
 			return
 		}
 
@@ -61,7 +63,7 @@ func (e DictionaryPlugin) Parse(user, channel, input string, conn *Connection) (
 	return
 }
 
-func (e DictionaryPlugin) Help() (texts []string) {
-	texts = append(texts, config.Nick+"[:] define[:] <word>")
+func (dp DictionaryPlugin) Help() (texts []string) {
+	texts = append(texts, dp.Nick+"[:] define[:] <word>")
 	return texts
 }

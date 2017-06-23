@@ -1,14 +1,20 @@
-package main
+package gomr
 
 import (
+	"database/sql"
 	"errors"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/go-gorp/gorp"
 )
 
 type FactoidPlugin struct {
+	// The plugin will silently ignore the following words
 	Blacklist []string
+	Db        *gorp.DbMap
+	Nick      string
 }
 
 type Factoid struct {
@@ -19,17 +25,15 @@ type Factoid struct {
 }
 
 func (fp FactoidPlugin) Register() (err error) {
-	// The plugin will silently ignore the following words
-	fp.Blacklist = []string{"why", "where", "who", "when", "how", "now"}
 	return nil
 }
 
 func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (err error) {
 	// Check for factoid retrieval match
-	if Match(input, `^\S+\?\r$`) || Match(input, `(?i)^`+config.Nick+`:*\s+\S+\?\r$`) {
+	if Match(input, `^\S+\?\r$`) || Match(input, `(?i)^`+fp.Nick+`:*\s+\S+\?\r$`) {
 		var frgxStr string
-		if Match(input, `(?i)^`+config.Nick) {
-			frgxStr = `(?i)^` + config.Nick + `:*\s+(\S+)\?\r$`
+		if Match(input, `(?i)^`+fp.Nick) {
+			frgxStr = `(?i)^` + fp.Nick + `:*\s+(\S+)\?\r$`
 		} else {
 			frgxStr = `^(\S+)\?\r$`
 		}
@@ -50,7 +54,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 			}
 
 			var factoids []Factoid
-			factoids, err = getFactoids(fact)
+			factoids, err = fp.GetFactoids(fact)
 			if err != nil {
 				return err
 			}
@@ -63,7 +67,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 	}
 
 	// Check for factoid set match
-	setrgxStr := `(?i)^` + config.Nick + `:*\s+(\S+) is\s+(\S+.*)\r$`
+	setrgxStr := `(?i)^` + fp.Nick + `:*\s+(\S+) is\s+(\S+.*)\r$`
 	if Match(input, setrgxStr) {
 		srgx := regexp.MustCompile(setrgxStr)
 		smatch := srgx.FindStringSubmatch(input)
@@ -80,7 +84,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 
 			utime := time.Now().Unix()
 			factoid := Factoid{Fact: fact, Definition: def, CreationDate: utime}
-			err = factoid.Create()
+			err = fp.Create(factoid)
 			if err != nil {
 				return err
 			}
@@ -90,7 +94,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 	}
 
 	// Check for factoid forget match
-	frgxStr := `(?i)^` + config.Nick + `:*\s+forget\s+(\S+)\s*([0-9]*)\r$`
+	frgxStr := `(?i)^` + fp.Nick + `:*\s+forget\s+(\S+)\s*([0-9]*)\r$`
 	if Match(input, frgxStr) {
 		frgx := regexp.MustCompile(frgxStr)
 		fmatch := frgx.FindStringSubmatch(input)
@@ -99,7 +103,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 				// id was provided
 				id, _ := strconv.Atoi(fmatch[2])
 				fact := fmatch[1]
-				factoids, err := getFactoids(fact)
+				factoids, err := fp.GetFactoids(fact)
 				if err != nil {
 					return err
 				}
@@ -114,7 +118,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 					return nil
 				}
 
-				err = factoids[id-1].Delete()
+				err = fp.Delete(factoids[id-1])
 				if err != nil {
 					return err
 				}
@@ -123,7 +127,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 			} else {
 				// id not provided - delete the latest
 				fact := fmatch[1]
-				factoids, err := getFactoids(fact)
+				factoids, err := fp.GetFactoids(fact)
 				if err != nil {
 					return err
 				}
@@ -133,7 +137,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 					return nil
 				}
 
-				err = factoids[len(factoids)-1].Delete()
+				err = fp.Delete(factoids[len(factoids)-1])
 				if err != nil {
 					return err
 				}
@@ -146,39 +150,39 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 }
 
 func (fp FactoidPlugin) Help() (texts []string) {
-	texts = append(texts, config.Nick+"[:] <fact> is <definition>")
-	texts = append(texts, config.Nick+"[:] <fact>?")
+	texts = append(texts, fp.Nick+"[:] <fact> is <definition>")
+	texts = append(texts, fp.Nick+"[:] <fact>?")
 	texts = append(texts, "<fact>?")
 	return texts
 }
 
-func (f *Factoid) Create() (err error) {
-	err = Db.Insert(f)
+func (fp FactoidPlugin) Create(f Factoid) (err error) {
+	err = fp.Db.Insert(f)
 	return
 }
 
-func (f *Factoid) Delete() (err error) {
+func (fp FactoidPlugin) Delete(f Factoid) (err error) {
 	var rowcnt int64
-	rowcnt, err = Db.Delete(f)
+	rowcnt, err = fp.Db.Delete(f)
 	if rowcnt == 0 {
-		return ErrNoRowsUpdated
+		return sql.ErrNoRows
 	}
 	return
 }
 
-func (f *Factoid) Update() (err error) {
+func (fp FactoidPlugin) Update(f Factoid) (err error) {
 	var rowCnt int64
-	rowCnt, err = Db.Update(f)
+	rowCnt, err = fp.Db.Update(f)
 	if err != nil {
 		return err
 	}
 	if rowCnt == 0 {
-		return ErrNoRowsUpdated
+		return sql.ErrNoRows
 	}
 	return nil
 }
 
-func getFactoids(fact string) (factoids []Factoid, err error) {
-	_, err = Db.Select(&factoids, "select * from factoids where fact=? order by creation_date ASC", fact)
+func (fp FactoidPlugin) GetFactoids(fact string) (factoids []Factoid, err error) {
+	_, err = fp.Db.Select(&factoids, "select * from factoids where fact=? order by creation_date ASC", fact)
 	return
 }

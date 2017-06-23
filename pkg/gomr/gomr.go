@@ -1,51 +1,73 @@
-package main
+package gomr
 
 import (
 	"bufio"
-	"flag"
+	"fmt"
 	"reflect"
 	"regexp"
 
+	"github.com/go-gorp/gorp"
 	"github.com/golang/glog"
 )
 
-// All plugins should implement this interface
-type Plugin interface {
-	Register() error
-	Parse(string, string, string, *Connection) error // Parse(user, channel, msg, connection)
-	Help() []string
+type GomrService struct {
+	Config  *Config
+	Db      *gorp.DbMap
+	Plugins []Plugin
 }
 
-var (
-	config     Config
-	pluginList []Plugin
-)
-
-// This is where we start heh
-func main() {
-	configPath := flag.String("config", "./gomr.yaml", "Path to config file")
-	flag.Parse()
-	glog.Infoln("Starting irc bot...")
-
-	// Read configuration
-	config = GetConfiguration(*configPath)
-
+func NewGomrService(config *Config, dbConfig *DbConfig) (*GomrService, error) {
+	// Initiate database connection
 	glog.Infoln("Getting database connection...")
-	err := InitDB(config.Db.Hostname, config.Db.Port,
-		config.Db.Username, config.Db.Password, config.Db.Name)
+	database, err := InitDB(dbConfig.Hostname, dbConfig.Port,
+		dbConfig.Username, dbConfig.Password, dbConfig.Name)
 	if err != nil {
-		glog.Fatalln("ERROR: Unable to connect to to database:", err)
+		return nil, fmt.Errorf("Unable to connect to to database:", err)
 	}
 
-	// Register all plugins
-	glog.Infoln("Registering plugins...")
-	registerPlugins()
+	// TODO allow plugins to be configurable somehow
+	// Really I'd like to get rid of the word 'plugin' entirely since its a feature in go1.8beta now
+	// That, or actually use the plugin feature. That would be neato
+	var plugins []Plugin
 
+	ex := ExamplePlugin{}
+	plugins = append(plugins, ex)
+
+	karma := KarmaPlugin{
+		Db:   database,
+		Nick: config.Nick,
+	}
+	plugins = append(plugins, karma)
+
+	factoid := FactoidPlugin{
+		// TODO this should be configurable
+		Blacklist: []string{"why", "where", "who", "when", "how", "now"},
+		Db:        database,
+		Nick:      config.Nick,
+	}
+	plugins = append(plugins, factoid)
+
+	dict := DictionaryPlugin{
+		Nick:          config.Nick,
+		WordnikAPIKey: config.WordnikAPIKey,
+	}
+	plugins = append(plugins, dict)
+
+	service := &GomrService{
+		Config:  config,
+		Db:      database,
+		Plugins: plugins,
+	}
+
+	err = service.RegisterPlugins()
+	return service, err
+}
+
+func (s *GomrService) Run() error {
 	// create a connection to the irc server and join channel
-	var conn *Connection
-	conn, err = NewConnection(config.Hostname, config.Port, config.Channel, config.Nick)
+	conn, err := NewConnection(s.Config.Hostname, s.Config.Port, s.Config.Channel, s.Config.Nick)
 	if err != nil {
-		glog.Fatalln("Unable to connect to", config.Hostname, ":", config.Port, err)
+		return fmt.Errorf("Unable to connect to", s.Config.Hostname, ":", s.Config.Port, err)
 	}
 
 	// Loop through the connection stream for the rest of forseeable time
@@ -56,47 +78,34 @@ func main() {
 			if err.Error() == "EOF" {
 				continue
 			}
-			glog.Infoln("Oh shit, an error occured:", err)
-			return
+			glog.Infoln("ERROR: Failed to read from input stream:", err)
+			return err // TODO eventually this should be continue, but I want errors to be very obvious for now
 		}
-		parseLine(line, conn)
+		s.ParseLine(line, conn)
 	}
 
 	// Close the connection if we ever get here for some reason
 	conn.Conn.Close()
+
+	return nil
 }
 
 // All plugins should be registered here.
-func registerPlugins() {
-	var plugins []Plugin
-
-	exPlugin := ExamplePlugin{}
-	plugins = append(plugins, exPlugin)
-
-	karmaPlugin := KarmaPlugin{}
-	plugins = append(plugins, karmaPlugin)
-
-	factoidPlugin := FactoidPlugin{}
-	plugins = append(plugins, factoidPlugin)
-
-	dictPlugin := DictionaryPlugin{}
-	plugins = append(plugins, dictPlugin)
-
-	var err error
-	for _, p := range plugins {
-		err = p.Register()
+func (s *GomrService) RegisterPlugins() error {
+	for _, p := range s.Plugins {
+		err := p.Register()
 		if err != nil {
-			glog.Infoln("ERROR: Unable to register and enable plugin", reflect.TypeOf(p), ":", err)
-		} else {
-			pluginList = append(pluginList, p)
+			return fmt.Errorf("ERROR: Unable to register and enable plugin %s: %s\n", reflect.TypeOf(p), err)
 		}
+		glog.Infof("Successfully registered plugin %s", reflect.TypeOf(p))
 	}
+	return nil
 }
 
 // Main method to parse lines sent from the server
 // Loops through each plugin in pluginList and runs the Parse() method from each
 //   on the provided line
-func parseLine(line string, conn *Connection) {
+func (s *GomrService) ParseLine(line string, conn *Connection) {
 	glog.Infoln(line)
 
 	// If a PING is received from the server, respond to avoid being disconnected
@@ -125,7 +134,7 @@ func parseLine(line string, conn *Connection) {
 	cmatch := crgx.FindStringSubmatch(line)
 	if cmatch != nil && len(cmatch) > 1 {
 		channel = cmatch[1]
-		if channel == config.Nick {
+		if channel == s.Config.Nick {
 			// This must be done to allow PRIVMSG's to users
 			channel = user
 		}
@@ -141,9 +150,9 @@ func parseLine(line string, conn *Connection) {
 
 	if msg != "" {
 		// Check if the help command was sent
-		if Match(msg, `(?i)`+config.Nick+`[:,.]*\shelp`) {
+		if Match(msg, `(?i)`+s.Config.Nick+`[:,.]*\shelp`) {
 			var helpText []string
-			for _, plugin := range pluginList {
+			for _, plugin := range s.Plugins {
 				texts := plugin.Help()
 				helpText = append(helpText, texts...)
 			}
@@ -152,14 +161,14 @@ func parseLine(line string, conn *Connection) {
 				//  It is likely the help text will get too big for a channel.
 				conn.SendTo(user, text)
 			}
-			conn.SendTo(user, "Want to contribute? Source: "+config.Source)
+			conn.SendTo(user, "Want to contribute? Source: "+s.Config.Source)
 			if channel != user {
 				conn.SendTo(channel, user+", help information sent via private message")
 			}
 			return
 		}
 
-		for _, p := range pluginList {
+		for _, p := range s.Plugins {
 			err := p.Parse(user, channel, msg, conn)
 			if err != nil {
 				glog.Infoln("ERROR in plugin", reflect.TypeOf(p), ":", err)

@@ -1,4 +1,4 @@
-package main
+package gomr
 
 import (
 	"github.com/golang/glog"
@@ -14,21 +14,22 @@ type Config struct {
 	Password string `yaml:"password"`
 	Channel  string `yaml:"channel"`
 	Nick     string `yaml:"nick"`
-	Db       struct {
-		Hostname string `yaml:"hostname"`
-		Port     string `yaml:"port"`
-		Username string `yaml:"username"`
-		Password string `yaml:"password"`
-		Name     string `yaml:"name"`
-	}
-	Source string `yaml:"source"`
+	Source   string `yaml:"source"`
 
 	// Dictionary Plugin
-	WordnikApiKey string `yaml:"wordnikapikey"`
+	WordnikAPIKey string `yaml:"wordnikapikey"`
+}
+
+type DbConfig struct {
+	Hostname string `yaml:"hostname"`
+	Port     string `yaml:"port"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	Name     string `yaml:"name"`
 }
 
 // Set configuration variables from configuration file and environment
-func GetConfiguration(path string) (c Config) {
+func GetConfiguration(path string) (c Config, d DbConfig) {
 	// Bail if the configuration file isn't found
 	//  Some configuration must be set via configuration file
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -38,25 +39,26 @@ func GetConfiguration(path string) (c Config) {
 	// Get inital configuration from yaml file
 	c = getFileConfiguration(path)
 
+	d = DbConfig{}
 	// Set database configuration via env variables if they exist
 	//  Environment variables take precedence over file configuration
 	if e := os.Getenv("GOMR_DATABASE_SERVICE_HOST"); e != "" {
-		c.Db.Hostname = e
+		d.Hostname = e
 	}
 	if e := os.Getenv("GOMR_DATABASE_SERVICE_PORT"); e != "" {
-		c.Db.Port = e
+		d.Port = e
 	}
 	if e := os.Getenv("MYSQL_USER"); e != "" {
-		c.Db.Username = e
+		d.Username = e
 	}
 	if e := os.Getenv("MYSQL_PASSWORD"); e != "" {
-		c.Db.Password = e
+		d.Password = e
 	}
 	if e := os.Getenv("MYSQL_DATABASE"); e != "" {
-		c.Db.Name = e
+		d.Name = e
 	}
 
-	return c
+	return c, d
 }
 
 // Get configuration from yaml file

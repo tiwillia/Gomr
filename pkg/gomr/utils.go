@@ -1,4 +1,4 @@
-package main
+package gomr
 
 import (
 	"errors"
@@ -67,4 +67,26 @@ func Match(line, regex string) bool {
 	}
 
 	return matchRegex.MatchString(line)
+}
+
+// Convert an int to a string and add the appropriate suffix
+func addSuffix(num int) (fullNum string) {
+	n := strconv.Itoa(num)
+	suffix := ""
+	switch {
+	case Match(n, `^1.$`):
+		suffix = "th"
+	case Match(n, `.*[456789]+$`):
+		suffix = "th"
+	case Match(n, `[\d]+0$`):
+		suffix = "th"
+	case Match(n, `.*3$`):
+		suffix = "rd"
+	case Match(n, `.*2$`):
+		suffix = "nd"
+	case Match(n, `.*1$`):
+		suffix = "st"
+	}
+	fullNum = n + suffix
+	return
 }

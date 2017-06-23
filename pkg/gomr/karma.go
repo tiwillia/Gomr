@@ -1,13 +1,17 @@
-package main
+package gomr
 
 import (
 	"database/sql"
 	"errors"
 	"regexp"
 	"strconv"
+
+	"github.com/go-gorp/gorp"
 )
 
 type KarmaPlugin struct {
+	Db   *gorp.DbMap
+	Nick string
 }
 
 type Karma struct {
@@ -16,23 +20,20 @@ type Karma struct {
 	Points int    `db:"points"`
 }
 
-var ErrUserNotFound error
-
 func (kp KarmaPlugin) Register() (err error) {
-	ErrUserNotFound = errors.New("User not found.")
 	return nil
 }
 
 func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (err error) {
-	if Match(input, `(?i)`+config.Nick+`[\S]?\s+rank`) {
-		if Match(input, `(?i)`+config.Nick+`[\S]?\s+rank\s+[\S]+`) {
+	if Match(input, `(?i)`+kp.Nick+`[\S]?\s+rank`) {
+		if Match(input, `(?i)`+kp.Nick+`[\S]?\s+rank\s+[\S]+`) {
 			urgx, _ := regexp.Compile(`\s+rank\s+([\S]+)`)
 			umatch := urgx.FindStringSubmatch(input)
 			if umatch != nil && len(umatch) > 1 {
 				user := umatch[1]
-				rank, points, err := findRank(user)
+				rank, points, err := kp.FindRank(user)
 				if err != nil {
-					if err == ErrUserNotFound {
+					if err == sql.ErrNoRows {
 						conn.SendTo(channel, user+" has never had karma modified.")
 						return nil
 					}
@@ -41,7 +42,7 @@ func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (er
 				conn.SendTo(channel, user+" is "+rank+" with "+strconv.Itoa(points)+" points of karma")
 			}
 		} else {
-			klist, err := getKarmaByPoints()
+			klist, err := kp.GetKarmaByPoints()
 			if err != nil {
 				return err
 			}
@@ -87,12 +88,12 @@ func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (er
 			return nil
 		}
 		var k Karma
-		k, err = findOrCreateKarma(user)
+		k, err = kp.FindOrCreateKarma(user)
 		if err != nil {
 			return errors.New("Unable to find or create karma entry:" + err.Error())
 		}
 		k.Points = k.Points + change
-		err = k.Update()
+		err = kp.Update(k)
 		if err != nil {
 			return errors.New("Unable to update karma entry:" + err.Error())
 		}
@@ -103,21 +104,18 @@ func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (er
 
 func (kp KarmaPlugin) Help() (texts []string) {
 	texts = append(texts, "<name>++ or <name>--")
-	texts = append(texts, config.Nick+"[:] rank")
-	texts = append(texts, config.Nick+"[:] rank <user>")
+	texts = append(texts, kp.Nick+"[:] rank")
+	texts = append(texts, kp.Nick+"[:] rank <user>")
 	return texts
 }
 
-func findRank(user string) (rank string, points int, err error) {
+func (kp KarmaPlugin) FindRank(user string) (rank string, points int, err error) {
 	var k Karma
-	err = Db.SelectOne(&k, "select * from karma where user=?", user)
+	err = kp.Db.SelectOne(&k, "select * from karma where user=?", user)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			err = ErrUserNotFound
-		}
 		return
 	}
-	klist, err := getKarmaByPoints()
+	klist, err := kp.GetKarmaByPoints()
 	if err != nil {
 		return
 	}
@@ -136,13 +134,13 @@ func findRank(user string) (rank string, points int, err error) {
 	return
 }
 
-func findOrCreateKarma(u string) (k Karma, err error) {
-	err = Db.SelectOne(&k, "select * from karma where user=?", u)
+func (kp KarmaPlugin) FindOrCreateKarma(u string) (k Karma, err error) {
+	err = kp.Db.SelectOne(&k, "select * from karma where user=?", u)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			k.Points = 0
 			k.User = u
-			err = Db.Insert(&k)
+			err = kp.Db.Insert(&k)
 			if err != nil {
 				return
 			}
@@ -151,40 +149,19 @@ func findOrCreateKarma(u string) (k Karma, err error) {
 	return
 }
 
-func getKarmaByPoints() (klist []Karma, err error) {
-	_, err = Db.Select(&klist, "select * from karma order by points DESC")
+func (kp KarmaPlugin) GetKarmaByPoints() (klist []Karma, err error) {
+	_, err = kp.Db.Select(&klist, "select * from karma order by points DESC")
 	return
 }
 
-func addSuffix(num int) (fullNum string) {
-	n := strconv.Itoa(num)
-	suffix := ""
-	switch {
-	case Match(n, `^1.$`):
-		suffix = "th"
-	case Match(n, `.*[456789]+$`):
-		suffix = "th"
-	case Match(n, `[\d]+0$`):
-		suffix = "th"
-	case Match(n, `.*3$`):
-		suffix = "rd"
-	case Match(n, `.*2$`):
-		suffix = "nd"
-	case Match(n, `.*1$`):
-		suffix = "st"
-	}
-	fullNum = n + suffix
-	return
-}
-
-func (k *Karma) Update() (err error) {
+func (kp KarmaPlugin) Update(k Karma) (err error) {
 	var rowCnt int64
-	rowCnt, err = Db.Update(k)
+	rowCnt, err = kp.Db.Update(k)
 	if err != nil {
 		return err
 	}
 	if rowCnt == 0 {
-		return ErrNoRowsUpdated
+		return sql.ErrNoRows
 	}
 	return nil
 }
