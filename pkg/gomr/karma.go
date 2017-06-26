@@ -156,7 +156,7 @@ func (kp KarmaPlugin) GetKarmaByPoints() (klist []Karma, err error) {
 
 func (kp KarmaPlugin) Update(k Karma) (err error) {
 	var rowCnt int64
-	rowCnt, err = kp.Db.Update(k)
+	rowCnt, err = kp.Db.Update(&k)
 	if err != nil {
 		return err
 	}
