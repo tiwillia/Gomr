@@ -12,19 +12,13 @@ objects:
   - kind: ImageStream
     apiVersion: "v1"
     metadata: 
-      name: "gomr-openshift"
+      name: "${NAME}-openshift"
       annotations: 
         description: "Keeps track of changes in the application image"
-  - kind: Secret
-    apiVersion: "v1"
-    metadata: 
-      name: "gomr-config"
-    stringData: 
-      config.yaml: "${GOMR_CONFIG_YAML}"
   - kind: BuildConfig
     apiVersion: "v1"
     metadata: 
-      name: "gomr"
+      name: "${NAME}"
       annotations: 
         description: "Gomr build config."
     spec: 
@@ -38,7 +32,7 @@ objects:
       output: 
         to: 
           kind: ImageStreamTag
-          name: "gomr-openshift:latest"
+          name: "${NAME}-openshift:latest"
       triggers: 
         - type: "ConfigChange"
         - type: "GitHub"
@@ -47,7 +41,7 @@ objects:
   - kind: DeploymentConfig
     apiVersion: "v1"
     metadata: 
-      name: "gomr"
+      name: "${NAME}"
     spec: 
       strategy: 
         type: "Recreate"
@@ -56,45 +50,48 @@ objects:
           imageChangeParams: 
             automatic: true
             containerNames: 
-              - "gomr"
+              - "${NAME}"
             from: 
               kind: ImageStreamTag
-              name: "gomr-openshift:latest"
+              name: "${NAME}-openshift:latest"
         - type: "ConfigChange"
       replicas: 1
       selector: 
-        name: "gomr"
+        name: "${NAME}"
       template: 
         metadata: 
-          name: "gomr"
+          name: "${NAME}"
           labels: 
-            name: "gomr"
+            name: "${NAME}"
         spec: 
           containers: 
-            - name: "gomr"
-              image: "gomr-openshift"
+            - name: "${NAME}"
+              image: "${NAME}-openshift"
               ports: []
               env: 
                 - name: "DATABASE_SERVICE_NAME"
-                  value: "${DATABASE_SERVICE_NAME}"
+                  value: "${NAME}_DATABASE"
                 - name: "MYSQL_USER"
                   value: "${DATABASE_USER}"
                 - name: "MYSQL_PASSWORD"
                   value: "${DATABASE_PASSWORD}"
                 - name: "MYSQL_DATABASE"
                   value: "${DATABASE_NAME}"
-              volumeMounts: 
-                - name: "gomr-config-volume"
-                  mountPath: "${GOMR_CONFIG_MOUNT_DIR}"
-                  readOnly: true
-          volumes: 
-            - name: "gomr-config-volume"
-              secret: 
-                secretName: "gomr-config"
+              command:
+              - /go/bin/gomr
+              - --logtostderr=true
+              - --v=10
+              - --host=${SERVER_HOSTNAME}
+              - --port=${SERVER_PORT}
+              - --nick=${NICK}
+              - --channel=${SERVER_CHANNEL}
+              - --password=${CHANNEL_PASSWORD}
+              - --source=${SOURCE_LINK}
+              - --wordnikapikey=${WORDNIK_API_KEY}
   - kind: Service
     apiVersion: "v1"
     metadata: 
-      name: "${DATABASE_SERVICE_NAME}"
+      name: "${NAME}-database"
       annotations: 
         description: "Exposes the database server"
     spec: 
@@ -103,11 +100,11 @@ objects:
           port: 3306
           targetPort: 3306
       selector: 
-        name: "${DATABASE_SERVICE_NAME}"
+        name: "${NAME}-database"
   - apiVersion: v1
     kind: PersistentVolumeClaim
     metadata:
-      name: "gomr-pv"
+      name: "${NAME}-pv"
     spec:
       accessModes:
         - "ReadWriteOnce"
@@ -117,7 +114,7 @@ objects:
   - kind: DeploymentConfig
     apiVersion: "v1"
     metadata: 
-      name: "${DATABASE_SERVICE_NAME}"
+      name: "${NAME}-database"
       annotations: 
         description: "Defines how to deploy the database"
     spec: 
@@ -136,12 +133,12 @@ objects:
         - type: "ConfigChange"
       replicas: 1
       selector: 
-        name: "${DATABASE_SERVICE_NAME}"
+        name: "${NAME}-database"
       template: 
         metadata: 
-          name: "${DATABASE_SERVICE_NAME}"
+          name: "${NAME}-database"
           labels: 
-            name: "${DATABASE_SERVICE_NAME}"
+            name: "${NAME}-database"
         spec: 
           containers: 
             - name: "mysql"
@@ -163,8 +160,12 @@ objects:
           volumes: 
             - name: "data"
               persistentVolumeClaim:
-                claimName: "gomr-pv"
+                claimName: "${NAME}-pv"
 parameters: 
+  - name: NAME
+    description: "Name of resources and labels"
+    value: "gomr"
+
   - name: SOURCE_REPOSITORY_URL
     description: "The URL of the repository with your application source code"
     value: "https://github.com/tiwillia/gomr.git"
@@ -178,17 +179,33 @@ parameters:
     generate: "expression"
     from: "[a-zA-Z0-9]{40}"
 
-  - name: GOMR_CONFIG_YAML
-    description: "Gomr Config YAML"
+  - name: SERVER_HOSTNAME
+    description: "Hostname of the irc server to connect to"
     required: true
 
-  - name: GOMR_CONFIG_MOUNT_DIR
-    description: "Gomr config volume mount directory"
-    value: "/gomr-config"
+  - name: SERVER_PORT
+    description: "Port of the IRC server to connect to"
+    value: "6667"
 
-  - name: DATABASE_SERVICE_NAME
-    description: "Database service name"
-    value: "gomr-database"
+  - name: SERVER_CHANNEL
+    description: "Channel for the IRC bot to join"
+    value: "#test_channel"
+
+  - name: CHANNEL_PASSWORD
+    description: "Password to the IRC channel (if applicable)"
+    value: ""
+
+  - name: NICK
+    description: "Nickname of the bot in IRC"
+    value: "gomr"
+
+  - name: WORDNIK_API_KEY
+    description: "Wordnik api key for dictionary support"
+    value: ""
+
+  - name: SOURCE_LINK
+    description: "Source link for contribution recommendations"
+    value: "https://github.com/tiwillia/gomr"
 
   - name: DATABASE_USER
     description: "database username"

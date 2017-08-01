@@ -10,4 +10,4 @@ WORKDIR /go/src/github.com/tiwillia/gomr
 COPY . /go/src/github.com/tiwillia/gomr
 RUN go-wrapper download github.com/tiwillia/gomr/cmd/gomr && go-wrapper install github.com/tiwillia/gomr/cmd/gomr
 
-CMD ["go-wrapper", "run", "--config=/gomr-config/config.yaml", "-logtostderr"]
+CMD ["go-wrapper", "run", "-logtostderr"]
