@@ -157,13 +157,13 @@ func (fp FactoidPlugin) Help() (texts []string) {
 }
 
 func (fp FactoidPlugin) Create(f Factoid) (err error) {
-	err = fp.Db.Insert(f)
+	err = fp.Db.Insert(&f)
 	return
 }
 
 func (fp FactoidPlugin) Delete(f Factoid) (err error) {
 	var rowcnt int64
-	rowcnt, err = fp.Db.Delete(f)
+	rowcnt, err = fp.Db.Delete(&f)
 	if rowcnt == 0 {
 		return sql.ErrNoRows
 	}
@@ -172,7 +172,7 @@ func (fp FactoidPlugin) Delete(f Factoid) (err error) {
 
 func (fp FactoidPlugin) Update(f Factoid) (err error) {
 	var rowCnt int64
-	rowCnt, err = fp.Db.Update(f)
+	rowCnt, err = fp.Db.Update(&f)
 	if err != nil {
 		return err
 	}
