@@ -1,6 +1,7 @@
-#Gomr
+Gomr
 -----------
-###Docker Instructions
+
+### Docker Instructions
 1) Modify the configuration yaml file:
 ```
 cp ./gomr.example.yaml ./gomr.yaml
@@ -19,7 +20,7 @@ docker build $GOPATH/src/github.com/tiwillia/gomr
 docker run <image_id>
 ```
 
-###OpenShift Insructions
+### OpenShift Insructions
 1) Modify the configuration yaml file:
 ```
 cp ./gomr.example.yaml ./gomr.yaml
