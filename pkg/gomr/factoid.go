@@ -59,9 +59,14 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 				return err
 			}
 
-			for i := range factoids {
-				conn.SendTo(channel, "#"+strconv.Itoa(i+1)+" "+fact+": "+factoids[i].Definition)
+			if len(factoids) > 1 {
+				for i := range factoids {
+					conn.SendTo(channel, "#"+strconv.Itoa(i+1)+" "+fact+": "+factoids[i].Definition)
+				}
+			} else {
+				conn.SendTo(channel, fact+" is "+factoids[0].Definition)
 			}
+
 			return nil
 		}
 	}
