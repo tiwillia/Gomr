@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // GET provided url over tcp. Returns a string with the response body.
@@ -67,6 +68,32 @@ func Match(line, regex string) bool {
 	}
 
 	return matchRegex.MatchString(line)
+}
+
+// CanonicalizeIrcNick converts a string to its downcased version according to
+// the IRC protocol, with control characters removed.
+func CanonicalizeIrcNick(nick string) string {
+	// Strip control characters and convert to lowercase.
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r == '[':
+			// '[' is uppercase '{'.
+			return '{'
+		case r == ']':
+			// ']' is uppercase '}'.
+			return '}'
+		case r == '\\':
+			// '\' is uppercase '|'.
+			return '|'
+		case r > 'A' && r <= 'Z':
+			// Make uppercase letters lowercase.
+			return r + 32
+		case r > 32 && r < 127:
+			// Non-control characters are fine.
+			return r
+		}
+		return -1
+	}, nick)
 }
 
 // Convert an int to a string and add the appropriate suffix

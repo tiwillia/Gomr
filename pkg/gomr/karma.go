@@ -111,6 +111,7 @@ func (kp KarmaPlugin) Help() (texts []string) {
 
 func (kp KarmaPlugin) FindRank(user string) (rank string, points int, err error) {
 	var k Karma
+	user = CanonicalizeIrcNick(user)
 	err = kp.Db.SelectOne(&k, "select * from karma where user=?", user)
 	if err != nil {
 		return
@@ -135,6 +136,7 @@ func (kp KarmaPlugin) FindRank(user string) (rank string, points int, err error)
 }
 
 func (kp KarmaPlugin) FindOrCreateKarma(u string) (k Karma, err error) {
+	u = CanonicalizeIrcNick(u)
 	err = kp.Db.SelectOne(&k, "select * from karma where user=?", u)
 	if err != nil {
 		if err == sql.ErrNoRows {
