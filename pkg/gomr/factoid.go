@@ -30,13 +30,10 @@ func (fp FactoidPlugin) Register() (err error) {
 
 func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (err error) {
 	// Check for factoid retrieval match
-	if Match(input, `^\S+\?\r$`) || Match(input, `(?i)^`+fp.Nick+`:*\s+\S+\?\r$`) {
-		var frgxStr string
-		if Match(input, `(?i)^`+fp.Nick) {
-			frgxStr = `(?i)^` + fp.Nick + `:*\s+(\S+)\?\r$`
-		} else {
-			frgxStr = `^(\S+)\?\r$`
-		}
+	if Match(input, `^\S+\?\r$`) ||
+		Match(input, `(?i)^`+fp.Nick+`:*\s+\S+\?\r$`) ||
+		Match(input, `(?i)^(`+fp.Nick+`:*\s)?\s*what\s*is\s+\S+\??\r$`) {
+		frgxStr := `(?i)^(?:` + fp.Nick + `:*\s)?\s*(?:what\s*is\s+)?(\S+?)\??\r$`
 		frgx := regexp.MustCompile(frgxStr)
 		fmatch := frgx.FindStringSubmatch(input)
 
@@ -152,6 +149,7 @@ func (fp FactoidPlugin) Parse(sender, channel, input string, conn *Connection) (
 func (fp FactoidPlugin) Help() (texts []string) {
 	texts = append(texts, fp.Nick+"[:] <fact> is <definition>")
 	texts = append(texts, fp.Nick+"[:] <fact>?")
+	texts = append(texts, "["+fp.Nick+"[:]] what is <fact>[?]")
 	texts = append(texts, "<fact>?")
 	texts = append(texts, fp.Nick+"[:] forget <fact> [n]")
 	return texts
