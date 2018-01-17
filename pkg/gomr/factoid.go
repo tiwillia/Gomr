@@ -153,6 +153,7 @@ func (fp FactoidPlugin) Help() (texts []string) {
 	texts = append(texts, fp.Nick+"[:] <fact> is <definition>")
 	texts = append(texts, fp.Nick+"[:] <fact>?")
 	texts = append(texts, "<fact>?")
+	texts = append(texts, fp.Nick+"[:] forget <fact> [n]")
 	return texts
 }
 
