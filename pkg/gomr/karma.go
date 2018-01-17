@@ -77,7 +77,7 @@ func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (er
 	if user != "" {
 		change = 1
 	} else {
-		user = MatchAndPull(input, `\S+\-\-`, `(\S+)\-\-`)
+		user = MatchAndPull(input, `\S+(?:--|—)`, `(\S+)(?:--|—)`)
 		if user != "" {
 			change = -1
 		}
