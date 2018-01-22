@@ -62,7 +62,7 @@ func (kp KarmaPlugin) Parse(sender, channel, input string, conn *Connection) (er
 		return nil
 	}
 
-	if !Match(input, `\S+(\+|-){2,}`) {
+	if !Match(input, `\S+(\+\+|--|—)`) {
 		return nil
 	}
 
